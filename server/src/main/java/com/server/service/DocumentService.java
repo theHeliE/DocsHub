@@ -56,8 +56,8 @@ public class DocumentService {
 
     /**
      * Find a document by code (either editor or viewer code)
-     * @param code The document code to search for
-     * @return The document if found
+     * @param code the document code to search for
+     * @return the document if found
      * @throws InvalidDocumentCodeException if no document is found with the given code
      */
     public Document findDocumentByCode(String code) {

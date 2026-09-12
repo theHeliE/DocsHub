@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/APT-Text-Editor.iml" filepath="$PROJECT_DIR$/.idea/APT-Text-Editor.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/DocsHub.iml" filepath="$PROJECT_DIR$/.idea/DocsHub.iml" />
     </modules>
   </component>
 </project>

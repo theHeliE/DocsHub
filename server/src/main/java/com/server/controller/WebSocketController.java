@@ -7,6 +7,8 @@ import com.server.exception.InvalidDocumentCodeException;
 import com.server.model.Document;
 import com.server.model.User;
 import com.server.service.DocumentService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
@@ -21,6 +23,8 @@ import java.util.*;
  */
 @Controller
 public class WebSocketController {
+
+    private static final Logger log = LoggerFactory.getLogger(WebSocketController.class);
 
     private final DocumentService documentService;
     private final SimpMessagingTemplate messagingTemplate;
@@ -39,7 +43,6 @@ public class WebSocketController {
     @MessageMapping("/join")
     @SendToUser("/queue/join")
     public Map<String, Object> joinDocument(@Payload String code) {
-        System.out.println("Received join request for code: " + code);
         try {
             // Find document by code and determine if user is editor or viewer
             Document document = documentService.findDocumentByCode(code);
@@ -57,11 +60,16 @@ public class WebSocketController {
             response.put("userColor", user.getColor());
             response.put("isEditor", isEditor);
             
+            log.info("User {} joined document {} as {}", user.getId(), document.getId(),
+                    isEditor ? "editor" : "viewer");
+
             // Notify other users that someone joined
             notifyUserListUpdate(document);
             
             return response;
         } catch (InvalidDocumentCodeException e) {
+            // Deliberately not logging the code itself, valid or not
+            log.warn("Rejected a join attempt with an unrecognised document code");
             Map<String, Object> errorResponse = new HashMap<>();
             errorResponse.put("error", e.getMessage());
             return errorResponse;
@@ -72,7 +80,7 @@ public class WebSocketController {
      * Retrieves the list of users currently in a document.
      *
      * @param documentId The unique identifier of the document
-     * @return Map containing the list of users or error message if document is not found
+     * @return The users currently in the document, or null if no such document exists
      */
     @MessageMapping("/document/{documentId}/users")
     @SendToUser("/queue/users")
@@ -83,12 +91,13 @@ public class WebSocketController {
             Document document = documentOpt.get();
             return document.getUsers();
         } else {
+            log.warn("User list requested for unknown document {}", documentId);
             return null;
         }
     }
 
     /**
-     * Handles a CRDT operation (insert or delete) and broadcasts it to all users.
+     * Handles a CRDT operation (insert, delete or undoDelete) and broadcasts it to all users.
      *
      * @param documentId The unique identifier of the document
      * @param operation  The CRDT operation containing type, userId, and other operation-specific data
@@ -111,7 +120,11 @@ public class WebSocketController {
                     .map(User::isEditor)
                     .orElse(false);
 
-            if (!isEditor) {return;}
+            if (!isEditor) {
+                log.warn("Rejected {} operation from non-editor user {} on document {}",
+                        operation.type(), operation.userId(), documentId);
+                return;
+            }
 
             boolean success = false;
 
@@ -134,8 +147,11 @@ public class WebSocketController {
             }
 
             if (success) {
+                // Content is never logged, only which kind of operation was applied
+                log.debug("Applied {} operation from user {} on document {}",
+                        operation.type(), operation.userId(), documentId);
+
                 // Broadcast the operation to all users in the document
-                System.out.println("Received operation: " + operation);
                 messagingTemplate.convertAndSend(
                         "/topic/document/" + documentId + "/operation",
                         operation
@@ -154,7 +170,6 @@ public class WebSocketController {
     public void handleCursorUpdate(
             @DestinationVariable String documentId,
             @Payload CursorUpdateRequest request) {
-        System.out.println("Received cursor update: " + request);
         
         Optional<Document> documentOpt = documentService.getDocumentById(documentId);
 
@@ -166,6 +181,7 @@ public class WebSocketController {
                     .filter(user -> user.getId().equals(request.userId()))
                     .findFirst()
                     .ifPresent(user -> {
+                        log.trace("Cursor update from user {} on document {}", request.userId(), documentId);
                         user.setCursorPosition(request.position());
                         
                         // Broadcast the cursor update to all users in the document
@@ -188,6 +204,7 @@ public class WebSocketController {
 
         documentOpt.ifPresent(document -> {
             if (document.removeUser(request.userId())) {
+                log.info("User {} left document {}", request.userId(), request.documentId());
                 // Notify other users that someone left
                 notifyUserListUpdate(document);
             }

@@ -1,0 +1,11 @@
+# Maven build output
+target/
+out/
+build/
+
+# OS noise
+.DS_Store
+Thumbs.db
+
+# Local configuration (copy .env.example to .env)
+.env

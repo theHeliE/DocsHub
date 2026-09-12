@@ -5,6 +5,8 @@ import com.server.model.Document;
 import com.server.model.User;
 import com.server.service.DocumentService;
 import jakarta.validation.Valid;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -14,11 +16,13 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * REST Controller that handles document creation
+ * REST controller for creating and fetching documents.
  */
 @RestController
 @RequestMapping("/document")
 public class Controller {
+
+    private static final Logger log = LoggerFactory.getLogger(Controller.class);
 
     private final DocumentService documentService;
 
@@ -38,6 +42,12 @@ public class Controller {
         User user = document.createNewUser(true);
         document.importContent(user.getId(), file.content());
 
+        // Access codes are credentials and the content is user data: neither is ever logged
+        // The document name is logged only at DEBUG
+        log.info("Created document {}", document.getId());
+        log.debug("Document {} named \"{}\" imported {} characters", document.getId(),
+                document.getName(), file.content() == null ? 0 : file.content().length());
+
         Map<String, Object> response = new HashMap<>();
         response.put("documentId", document.getId());
         response.put("documentName", document.getName());
@@ -46,10 +56,6 @@ public class Controller {
         response.put("userId", user.getId());
         response.put("userColor", user.getColor());
         response.put("crdt", document.getCrdt().serialize());
-
-        for (Map<String,Object> x : document.getCrdt().serialize()){
-            System.out.println(x);
-        }
 
         return ResponseEntity.ok(response);
     }
@@ -66,8 +72,10 @@ public class Controller {
         Optional<Document> documentOpt = documentService.getDocumentById(documentId);
         if (documentOpt.isPresent()) {
             Document document = documentOpt.get();
+            log.debug("Serving CRDT for document {}", documentId);
             return ResponseEntity.ok(document.getCrdt().serialize());
         } else {
+            log.warn("Requested document {} does not exist", documentId);
             return ResponseEntity.notFound().build();
         }
     }

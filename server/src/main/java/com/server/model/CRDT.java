@@ -27,22 +27,15 @@ public class CRDT {
     public boolean insertCharacter(String userId, String clock, String value, String parentId) {
         CharacterNode parentNode = nodeMap.get(parentId);
 
-        System.out.println("Inserting character: " + value + " at " + clock + " by " + userId + " in " + parentId);
 
         if (userId == null || clock == null || value == null || parentNode == null) {
-            System.out.println(userId == null);
-            System.out.println(clock == null);
-            System.out.println(value == null);
-            System.out.println(parentNode == null);
             return false;
         }
 
-        System.out.println("if 1 passed :D ");
 
         if (userId.isEmpty() || clock.isEmpty()) {
             return false;
         }
-        System.out.println("if 2 passed :DDDDD ");
 
         long baseTime = Long.valueOf(clock);
 
@@ -76,6 +69,7 @@ public class CRDT {
 
     /**
      * Import content into the CRDT
+     * @param userId the id of the user the imported characters are attributed to
      * @param content the text content to import
      */
     public void importContent(String userId, String content) {

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Logging for the desktop client. The server has its own configuration in
+  server/src/main/resources/application.properties.
+
+  Third-party libraries (Spring, Jackson, Tomcat's websocket client) are quiet at WARN so
+  the console stays readable; this application's own classes log at INFO. Raise
+  com.docshub.client to DEBUG to trace CRDT operations, or TRACE to include cursor
+  updates as well.
+-->
+<configuration>
+  <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+    <encoder>
+      <pattern>%d{HH:mm:ss.SSS} %-5level %logger{28} -- %msg%n</pattern>
+    </encoder>
+  </appender>
+
+  <logger name="com.docshub.client" level="INFO"/>
+
+  <root level="WARN">
+    <appender-ref ref="CONSOLE"/>
+  </root>
+</configuration>
